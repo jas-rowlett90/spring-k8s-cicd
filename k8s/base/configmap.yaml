@@ -1,0 +1,17 @@
+# configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-k8s-config
+data:
+  application.yaml: |
+    server:
+      port: 8081
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics
+      endpoint:
+        health:
+          show-details: always

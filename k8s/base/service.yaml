@@ -1,0 +1,13 @@
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-k8s-service
+spec:
+  selector:
+    app: spring-k8s-app
+  ports:
+  - port: 80
+    targetPort: 8081
+  type: ClusterIP
+
