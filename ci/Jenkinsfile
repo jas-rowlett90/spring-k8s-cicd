@@ -1,71 +1,85 @@
 pipeline {
-   agent any
-   
-   environment {
-       DOCKER_IMAGE = 'spring-k8s-app'
-       DOCKER_TAG = "${BUILD_NUMBER}"
-       SONAR_TOKEN = credentials('sonar-token')
-       KUBECONFIG = credentials('k8s-config')
-   }
+    agent any
 
-   stages {
-       stage('Checkout') {
-           steps {
-               checkout scm
-           }
-       }
+    environment {
+        DOCKER_IMAGE = 'spring-k8s-app'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+        SONAR_TOKEN = credentials('sonar-token')
+        KUBECONFIG = credentials('k8s-config')
+    }
 
-       stage('Build & Test') {
-           steps {
-               sh './mvnw clean package'
-               junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
-           }
-       }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
 
-       stage('SonarQube Analysis') {
-           steps {
-               withSonarQubeEnv('SonarQube') {
-                   sh "./mvnw sonar:sonar -Dsonar.projectKey=Spring-K8S-CICD -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$SONAR_TOKEN"
-               }
-           }
-       }
+        stage('Build & Test') {
+            steps {
+                sh './mvnw clean package'
+                junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+            }
+        }
 
-       stage('Build Docker Image') {
-           steps {
-               script {
-                   withEnv(['PATH+DOCKER=/usr/local/bin']) {
-                       sh 'docker build -t spring-k8s-app:${BUILD_NUMBER} .'
-                   }
-               }
-           }
-       }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh './mvnw sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=$SONAR_TOKEN'
+                }
+            }
+        }
 
-       stage('Security Scan') {
-           steps {
-               sh 'trivy image spring-k8s-app:${BUILD_NUMBER}'
-           }
-       }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                        sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
+                    }
+                }
+            }
+        }
 
-       stage('Quality Gate') {
-           steps {
-               timeout(time: 1, unit: 'MINUTES') {
-                   waitForQualityGate abortPipeline: true
-               }
-           }
-       }
+        stage('Security Scan') {
+            steps {
+                script {
+                    // NOTE: Using Docker socket mount for portfolio demonstration only.
+                    // Production environments should consider more secure alternatives:
+                    // 1. Use image save/load method instead of socket mount
+                    // 2. Implement Trivy in client-server mode
+                    // 3. Use dedicated scanning services (AWS ECR Scan, Harbor, etc.)
+                    sh '''
+                        docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:0.43.1 image spring-k8s-app:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
 
-       stage('Deploy to K8s') {
-           steps {
-               withKubeConfig([credentialsId: 'k8s-config']) {
-                   sh 'kubectl apply -f k8s/base'
-               }
-           }
-       }
-   }
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
 
-   post {
-       always {
-           cleanWs()
-       }
-   }
+        stage('Deploy to K8s') {
+            steps {
+                script {
+                    sh """
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
 }
