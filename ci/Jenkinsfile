@@ -38,7 +38,7 @@ pipeline {
                     }
                 }
             }
-        }
+       }
 
         stage('Security Scan') {
             steps {
@@ -52,12 +52,15 @@ pipeline {
                         sh '''
                             docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            aquasec/trivy:0.43.1 image spring-k8s-app:${BUILD_NUMBER}
+                            aquasec/trivy:0.43.1 \
+                            --timeout 10m \
+                            image spring-k8s-app:${BUILD_NUMBER}
                         '''
                     }
                 }
             }
         }
+
 
         stage('Quality Gate') {
             steps {
