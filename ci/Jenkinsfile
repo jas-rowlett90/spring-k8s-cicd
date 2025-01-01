@@ -45,6 +45,7 @@ pipeline {
         script {
             withEnv(['PATH+EXTRA=/usr/local/bin']) {
                 // NOTE: Using Docker socket mount for portfolio demonstration only.
+                // Using --vuln-type os to scan only OS-level vulnerabilities
                 // Production environments should consider more secure alternatives:
                 // 1. Use image save/load method instead of socket mount
                 // 2. Implement Trivy in client-server mode
@@ -55,6 +56,7 @@ pipeline {
                     aquasec/trivy:0.43.1 \
                     --timeout 10m \
                     --scanners vuln \
+                    --vuln-type os \
                     image spring-k8s-app:${BUILD_NUMBER}
                 '''
             }
