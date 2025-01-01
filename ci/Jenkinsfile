@@ -54,7 +54,6 @@ pipeline {
                     -v /var/run/docker.sock:/var/run/docker.sock \
                     aquasec/trivy:0.43.1 \
                     --timeout 10m \
-                    --no-progress \
                     --scanners vuln \
                     image spring-k8s-app:${BUILD_NUMBER}
                 '''
