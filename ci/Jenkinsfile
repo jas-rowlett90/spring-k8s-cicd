@@ -41,25 +41,28 @@ pipeline {
        }
 
         stage('Security Scan') {
-            steps {
-                script {
-                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                        // NOTE: Using Docker socket mount for portfolio demonstration only.
-                        // Production environments should consider more secure alternatives:
-                        // 1. Use image save/load method instead of socket mount
-                        // 2. Implement Trivy in client-server mode
-                        // 3. Use dedicated scanning services (AWS ECR Scan, Harbor, etc.)
-                        sh '''
-                            docker run --rm \
-                            -v /var/run/docker.sock:/var/run/docker.sock \
-                            aquasec/trivy:0.43.1 \
-                            --timeout 10m \
-                            image spring-k8s-app:${BUILD_NUMBER}
-                        '''
-                    }
-                }
+    steps {
+        script {
+            withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                // NOTE: Using Docker socket mount for portfolio demonstration only.
+                // Production environments should consider more secure alternatives:
+                // 1. Use image save/load method instead of socket mount
+                // 2. Implement Trivy in client-server mode
+                // 3. Use dedicated scanning services (AWS ECR Scan, Harbor, etc.)
+                sh '''
+                    docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    aquasec/trivy:0.43.1 \
+                    --timeout 10m \
+                    --skip-update \
+                    --no-progress \
+                    --scanners vuln \
+                    image spring-k8s-app:${BUILD_NUMBER}
+                '''
             }
         }
+    }
+}
 
 
         stage('Quality Gate') {
