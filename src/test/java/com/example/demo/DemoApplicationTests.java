@@ -1,10 +1,10 @@
-package com.example.springk8scicd;
+package com.example.demo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest(classes = SpringK8sCicdApplication.class)
-class SpringK8sCicdApplicationTests {
+@SpringBootTest(classes = DemoApplication.class)
+class DemoApplicationTests {
 
     @Test
     void contextLoads() {
