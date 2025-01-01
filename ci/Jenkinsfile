@@ -1,77 +1,71 @@
 pipeline {
-    agent any
-    
-    environment {
-        DOCKER_PATH = '/usr/local/bin/docker'
-        PATH = "${DOCKER_PATH}:${env.PATH}"
-        DOCKERHUB_CREDENTIALS = credentials('docker-cred')
-        SONAR_TOKEN = credentials('sonar-token')
-    }
+   agent any
+   
+   environment {
+       DOCKER_IMAGE = 'spring-k8s-app'
+       DOCKER_TAG = "${BUILD_NUMBER}"
+       SONAR_TOKEN = credentials('sonar-token')
+       KUBECONFIG = credentials('k8s-config')
+   }
 
-    stages {
-        stage('Build & Test') {
-            steps {
-                sh './mvnw clean verify'
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
-                }
-            }
-        }
+   stages {
+       stage('Checkout') {
+           steps {
+               checkout scm
+           }
+       }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh './mvnw sonar:sonar -Dsonar.login=$SONAR_TOKEN'
-                }
-            }
-        }
+       stage('Build & Test') {
+           steps {
+               sh './mvnw clean package'
+               junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+           }
+       }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    def buildNumber = env.BUILD_NUMBER
-                    sh "docker build -t spring-k8s-app:${buildNumber} ."
-                }
-            }
-        }
+       stage('SonarQube Analysis') {
+           steps {
+               withSonarQubeEnv('SonarQube') {
+                   sh "./mvnw sonar:sonar -Dsonar.projectKey=Spring-K8S-CICD -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$SONAR_TOKEN"
+               }
+           }
+       }
 
-        stage('Security Scan') {
-            steps {
-                sh 'trivy image spring-k8s-app:7'
-            }
-        }
+       stage('Build Docker Image') {
+           steps {
+               script {
+                   withEnv(['PATH+DOCKER=/usr/local/bin']) {
+                       sh 'docker build -t spring-k8s-app:${BUILD_NUMBER} .'
+                   }
+               }
+           }
+       }
 
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+       stage('Security Scan') {
+           steps {
+               sh 'trivy image spring-k8s-app:${BUILD_NUMBER}'
+           }
+       }
 
-        stage('Deploy to K8s') {
-            steps {
-                script {
-                    def buildNumber = env.BUILD_NUMBER
-                    withKubeConfig([credentialsId: 'k8s-config']) {
-                        sh """
-                            kubectl apply -f k8s/
-                            kubectl set image deployment/spring-app \
-                            spring-app=spring-k8s-app:${buildNumber}
-                        """
-                    }
-                }
-            }
-        }
-    }
+       stage('Quality Gate') {
+           steps {
+               timeout(time: 1, unit: 'MINUTES') {
+                   waitForQualityGate abortPipeline: true
+               }
+           }
+       }
 
-    post {
-        always {
-            node {
-                cleanWs()
-            }
-        }
-    }
+       stage('Deploy to K8s') {
+           steps {
+               withKubeConfig([credentialsId: 'k8s-config']) {
+                   sh 'kubectl apply -f k8s/base'
+               }
+           }
+       }
+   }
+
+   post {
+       always {
+           cleanWs()
+       }
+   }
 }
