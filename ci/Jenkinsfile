@@ -1,3 +1,6 @@
+Let's go back to the Jenkinsfile that was able to start running (before hitting the 'any' label error):
+
+```groovy
 pipeline {
     agent any
     
@@ -73,9 +76,8 @@ pipeline {
 
     post {
         always {
-            node('any') {
-                cleanWs()
-            }
+            cleanWs()
         }
     }
 }
+
