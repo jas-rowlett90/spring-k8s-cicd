@@ -34,9 +34,12 @@ pipeline {
                 }
             }
         }
+
         stage('Security Scan') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
+    steps {
+        timeout(time: 10, unit: 'MINUTES') {
+            script {
+                withEnv(['PATH+EXTRA=/usr/local/bin']) {
                     sh """
                         docker run --rm \
                         -v /var/run/docker.sock:/var/run/docker.sock \
@@ -49,6 +52,9 @@ pipeline {
                 }
             }
         }
+    }
+}
+
         stage('Quality Gate') {
             steps {
                 timeout(time: 2, unit: 'MINUTES') {
