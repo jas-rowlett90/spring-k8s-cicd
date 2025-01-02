@@ -21,7 +21,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh "./mvnw sonar:sonar -Dsonar.qualitygate=Springboot-K8S-CICD"
+                    sh './mvnw sonar:sonar -Dsonar.qualitygate=Springboot-K8S-CICD'
                 }
             }
         }
@@ -34,34 +34,31 @@ pipeline {
                 }
             }
         }
+
         stage('Security Scan') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    script {
-                        withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                            sh """
-                                docker run --rm \
-                                -v /var/run/docker.sock:/var/run/docker.sock \
-                                aquasec/trivy:0.43.1 \
-                                --timeout 10m \
-                                --scanners vuln \
-                                --vuln-type os \
-                                image ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            """
-                        }
-                    }
+    steps {
+        timeout(time: 10, unit: 'MINUTES') {
+            script {
+                withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                    sh """
+                        docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:0.43.1 \
+                        --timeout 10m \
+                        --scanners vuln \
+                        --vuln-type os \
+                        image ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    """
                 }
             }
         }
+    }
+}
+
         stage('Quality Gate') {
             steps {
-                timeout(time: 3, unit: 'MINUTES') {
-                    script {
-                        def qg = waitForQualityGate abortPipeline: false
-                        if (qg.status != 'OK') {
-                            echo "Quality Gate status: ${qg.status}"
-                        }
-                    }
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
