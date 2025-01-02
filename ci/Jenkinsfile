@@ -61,13 +61,15 @@ stage('Quality Gate') {
 }
                    
         stage('Deploy to K8s') {
-            steps {
-                script {
-                    sh "kubectl apply -f k8s/"
-                }
+    steps {
+        script {
+            withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                sh "kubectl apply -f k8s/"
             }
         }
     }
+}
+
     post {
         always {
             cleanWs()
