@@ -1,89 +1,67 @@
 pipeline {
     agent any
-
     environment {
         DOCKER_IMAGE = 'spring-k8s-app'
         DOCKER_TAG = "${BUILD_NUMBER}"
         SONAR_TOKEN = credentials('sonar-token')
         KUBECONFIG = credentials('k8s-config')
     }
-
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-
         stage('Build & Test') {
             steps {
                 sh './mvnw clean package'
                 junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
             }
         }
-
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh './mvnw sonar:sonar -Dsonar.host.url=http://localhost:9000 -Dsonar.token=$SONAR_TOKEN'
+                    sh './mvnw sonar:sonar -Dsonar.qualitygate=Springboot-K8S-CICD'
                 }
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 script {
-                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                        sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} ."
-                    }
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
                 }
             }
-       }
-
-        stage('Security Scan') {
-    steps {
-        script {
-            withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                // NOTE: Using Docker socket mount for portfolio demonstration only.
-                // Using --vuln-type os to scan only OS-level vulnerabilities
-                // Production environments should consider more secure alternatives:
-                // 1. Use image save/load method instead of socket mount
-                // 2. Implement Trivy in client-server mode
-                // 3. Use dedicated scanning services (AWS ECR Scan, Harbor, etc.)
-                sh '''
-                    docker run --rm \
-                    -v /var/run/docker.sock:/var/run/docker.sock \
-                    aquasec/trivy:0.43.1 \
-                    --timeout 10m \
-                    --scanners vuln \
-                    --vuln-type os \
-                    image spring-k8s-app:${BUILD_NUMBER}
-                '''
-            }
         }
-    }
-}
-
-
-        stage('Quality Gate') {
-    def qualityGate = waitForQualityGate()
-    if (qualityGate.status != 'OK') {
-        error "Quality Gate failed: ${qualityGate.status}"
-    }
-}
-
-        stage('Deploy to K8s') {
+        stage('Security Scan') {
             steps {
-                script {
+                timeout(time: 10, unit: 'MINUTES') {
                     sh """
-                        kubectl apply -f k8s/deployment.yaml
-                        kubectl apply -f k8s/service.yaml
+                        docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:0.43.1 \
+                        --timeout 10m \
+                        --scanners vuln \
+                        --vuln-type os \
+                        image ${DOCKER_IMAGE}:${DOCKER_TAG}
                     """
                 }
             }
         }
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        stage('Deploy to K8s') {
+            steps {
+                script {
+                    sh "kubectl apply -f k8s/"
+                }
+            }
+        }
     }
-
     post {
         always {
             cleanWs()
