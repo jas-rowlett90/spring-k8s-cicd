@@ -53,23 +53,21 @@ pipeline {
                 }
             }
         }
-        
-stage('Quality Gate') {
-    steps {
-        echo "Skipping Quality Gate"
-    }
-}
-                   
+        stage('Quality Gate') {
+            steps {
+                echo "Skipping Quality Gate"
+            }
+        }
         stage('Deploy to K8s') {
-    steps {
-        script {
-            withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                sh "kubectl apply -f k8s/"
+            steps {
+                script {
+                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                        sh "kubectl apply -f k8s/"
+                    }
+                }
             }
         }
     }
-}
-
     post {
         always {
             cleanWs()
