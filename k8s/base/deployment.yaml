@@ -18,6 +18,7 @@ spec:
       containers:
       - name: spring-k8s-app
         image: spring-k8s-app:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8081
         livenessProbe:

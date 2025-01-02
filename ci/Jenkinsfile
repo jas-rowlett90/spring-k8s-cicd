@@ -29,7 +29,22 @@ pipeline {
             steps {
                 script {
                     withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                        // Build Docker image with build-specific tag
                         sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+
+                        // Add "latest" tag to the image
+                        sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                    }
+                }
+            }
+        }
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                        // Push both tags to the Docker registry
+                        sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        sh "docker push ${DOCKER_IMAGE}:latest"
                     }
                 }
             }
