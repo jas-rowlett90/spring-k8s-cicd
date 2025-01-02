@@ -62,16 +62,7 @@ pipeline {
             steps {
                 script {
                     withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                        // Validate manifests
-                        sh "kubectl apply --dry-run=client -f k8s/"
-                        
-                        // Deploy to Kubernetes
-                        sh "kubectl apply -f k8s/ --namespace=default"
-
-                        // Confirm deployment success
-                        sh """
-                            kubectl rollout status deployment/spring-k8s-app --namespace=default
-                        """
+                        sh "kubectl apply -f k8s/"
                     }
                 }
             }
@@ -83,4 +74,3 @@ pipeline {
         }
     }
 }
-
