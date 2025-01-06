@@ -80,25 +80,26 @@ pipeline {
                 echo "Skipping Quality Gate"
             }
         }
-        stage('Deploy to K8s') {
-            steps {
-                script {
-                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                        // Validate manifests
-                        sh "kubectl apply --dry-run=client -f k8s/"
-                        
-                        // Deploy to Kubernetes
-                        sh "kubectl apply -f k8s/ --namespace=default"
-
-                        // Confirm deployment success
-                        sh """
-                            kubectl rollout status deployment/spring-k8s-app --namespace=default
-                        """
-                    }
-                }
+        
+stage('Deploy to K8s') {
+    steps {
+        script {
+            withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                // Apply manifests individually for better control
+                sh """
+                    kubectl apply -f k8s/base/configmap.yaml
+                    kubectl apply -f k8s/base/deployment.yaml
+                    kubectl apply -f k8s/base/service.yaml
+                    kubectl apply -f k8s/base/ingress.yaml
+                """
+                
+                // Wait for rollout
+                sh "kubectl rollout status deployment/spring-k8s-app"
             }
         }
     }
+}
+            
     post {
         always {
             cleanWs()
