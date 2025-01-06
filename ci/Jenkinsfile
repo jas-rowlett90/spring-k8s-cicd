@@ -1,107 +1,107 @@
 pipeline {
-    agent any
-    environment {
-        DOCKER_IMAGE = 'spring-k8s-app'
-        DOCKER_TAG = "${BUILD_NUMBER}"
-        SONAR_TOKEN = credentials('sonar-token')
-        KUBECONFIG = credentials('k8s-config')
-    }
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-        stage('Build & Test') {
-            steps {
-                sh './mvnw clean package'
-                junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
-            }
-        }
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh "./mvnw sonar:sonar -Dsonar.qualitygate=Springboot-K8S-CICD"
-                }
-            }
-        }
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                        // Build Docker image with build-specific tag
-                        sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+   agent any
+   environment {
+       DOCKER_IMAGE = 'spring-k8s-app'
+       DOCKER_TAG = "${BUILD_NUMBER}"
+       SONAR_TOKEN = credentials('sonar-token')
+       KUBECONFIG = credentials('k8s-config')
+   }
+   stages {
+       stage('Checkout') {
+           steps {
+               checkout scm
+           }
+       }
+       stage('Build & Test') {
+           steps {
+               sh './mvnw clean package'
+               junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+           }
+       }
+       stage('SonarQube Analysis') {
+           steps {
+               withSonarQubeEnv('SonarQube') {
+                   sh "./mvnw sonar:sonar -Dsonar.qualitygate=Springboot-K8S-CICD"
+               }
+           }
+       }
+       stage('Build Docker Image') {
+           steps {
+               script {
+                   withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                       // Build Docker image with build-specific tag
+                       sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
 
-                        // Add "latest" tag to the image
-                        sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
-                    }
-                }
-            }
-        }
-        
-  /* Commenting out the Push Docker Image stage because of local Docker Desktop usage for project.Only necessary in scenarios where the Kubernetes cluster requires access
-           to the Docker image via a registry.
-        stage('Push Docker Image') {
-            steps {
-                script {
-                    withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                        sh """
-                            docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
-                            docker push ${DOCKER_IMAGE}:latest
-                        """
-                    }
-                }
-            }
-        }
-        */
+                       // Add "latest" tag to the image
+                       sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+                   }
+               }
+           }
+       }
+       
+ /* Commenting out the Push Docker Image stage because of local Docker Desktop usage for project.Only necessary in scenarios where the Kubernetes cluster requires access
+          to the Docker image via a registry.
+       stage('Push Docker Image') {
+           steps {
+               script {
+                   withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                       sh """
+                           docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                           docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                           docker push ${DOCKER_IMAGE}:latest
+                       """
+                   }
+               }
+           }
+       }
+       */
 
-        stage('Security Scan') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    script {
-                        withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                            sh """
-                                docker run --rm \
-                                -v /var/run/docker.sock:/var/run/docker.sock \
-                                aquasec/trivy:0.43.1 \
-                                --timeout 10m \
-                                --scanners vuln \
-                                --vuln-type os \
-                                image ${DOCKER_IMAGE}:${DOCKER_TAG}
-                            """
-                        }
-                    }
-                }
-            }
-        }
-        stage('Quality Gate') {
-            steps {
-                echo "Skipping Quality Gate"
-            }
-        }
-        
-stage('Deploy to K8s') {
-    steps {
-        withKubeConfig([credentialsId: 'k8s-config']) {  // Updated to match your ID
-            script {
-                sh """
-                    kubectl apply -f k8s/base/configmap.yaml
-                    kubectl apply -f k8s/base/deployment.yaml
-                    kubectl apply -f k8s/base/service.yaml
-                    kubectl apply -f k8s/base/ingress.yaml
-                """
-                
-                sh "kubectl rollout status deployment/spring-k8s-app"
-            }
-        }
-    }
+       stage('Security Scan') {
+           steps {
+               timeout(time: 10, unit: 'MINUTES') {
+                   script {
+                       withEnv(['PATH+EXTRA=/usr/local/bin']) {
+                           sh """
+                               docker run --rm \
+                               -v /var/run/docker.sock:/var/run/docker.sock \
+                               aquasec/trivy:0.43.1 \
+                               --timeout 10m \
+                               --scanners vuln \
+                               --vuln-type os \
+                               image ${DOCKER_IMAGE}:${DOCKER_TAG}
+                           """
+                       }
+                   }
+               }
+           }
+       }
+       stage('Quality Gate') {
+           steps {
+               echo "Skipping Quality Gate"
+           }
+       }
+       
+       stage('Deploy to K8s') {
+           steps {
+               withKubeConfig([credentialsId: 'k8s-config']) {
+                   script {
+                       sh """
+                           kubectl apply -f k8s/base/configmap.yaml
+                           kubectl apply -f k8s/base/deployment.yaml
+                           kubectl apply -f k8s/base/service.yaml
+                           kubectl apply -f k8s/base/ingress.yaml
+                       """
+                       
+                       sh "kubectl rollout status deployment/spring-k8s-app"
+                   }
+               }
+           }
+       }
+   }
+   
+   post {
+       always {
+           cleanWs()
+       }
+   }
 }
-            
-    post {
-        always {
-            cleanWs()
-        }
-    }
-}
-
