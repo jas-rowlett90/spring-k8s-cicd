@@ -1,4 +1,5 @@
 # deployment.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,18 +16,25 @@ spec:
       labels:
         app: spring-k8s-app
     spec:
+      serviceAccountName: spring-k8s-account  # Added this line for RBAC
       containers:
       - name: spring-k8s-app
         image: spring-k8s-app:latest
-        imagePullPolicy: Never
+        imagePullPolicy: Never  # Ensures using local image
         ports:
         - containerPort: 8081
+        envFrom:  # Added to use ConfigMap
+        - configMapRef:
+            name: spring-k8s-config
         livenessProbe:
           httpGet:
-            path: /actuator/health
+            path: /api/health
             port: 8081
-          initialDelaySeconds: 30
+          initialDelaySeconds: 90
           periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
         resources:
           limits:
             memory: "512Mi"

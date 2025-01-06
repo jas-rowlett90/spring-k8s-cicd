@@ -1,0 +1,6 @@
+projectKey=Spring-K8S-CICD
+serverUrl=http://localhost:9000
+serverVersion=24.12.0.100206
+dashboardUrl=http://localhost:9000/dashboard?id=Spring-K8S-CICD
+ceTaskId=010dc3e2-2564-4cef-97a7-8fd0d10aad34
+ceTaskUrl=http://localhost:9000/api/ce/task?id=010dc3e2-2564-4cef-97a7-8fd0d10aad34
