@@ -83,9 +83,8 @@ pipeline {
         
 stage('Deploy to K8s') {
     steps {
-        script {
-            withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                // Apply manifests individually for better control
+        withKubeConfig([credentialsId: 'k8s-config']) {  // Updated to match your ID
+            script {
                 sh """
                     kubectl apply -f k8s/base/configmap.yaml
                     kubectl apply -f k8s/base/deployment.yaml
@@ -93,7 +92,6 @@ stage('Deploy to K8s') {
                     kubectl apply -f k8s/base/ingress.yaml
                 """
                 
-                // Wait for rollout
                 sh "kubectl rollout status deployment/spring-k8s-app"
             }
         }

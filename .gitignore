@@ -22,3 +22,40 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Kubernetes
+k8s-config.txt
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+
+# Maven additional
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Build directories
+bin/
+build/
+out/
+
+# Gradle
+.gradle/
+
+# Development specific
+application-dev.properties
+application-local.properties
+
+# Logs and databases
+*.sqlite
+*.db
+logs/
