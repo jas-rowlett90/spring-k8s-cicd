@@ -82,23 +82,24 @@ pipeline {
        }
        
        stage('Deploy to K8s') {
-    steps {
-        withKubeConfig([credentialsId: 'k8s-config']) {
-            script {
-                withEnv(['PATH+EXTRA=/usr/local/bin']) {    // Added this line
-                    sh """
-                        kubectl apply -f k8s/base/configmap.yaml
-                        kubectl apply -f k8s/base/deployment.yaml
-                        kubectl apply -f k8s/base/service.yaml
-                        kubectl apply -f k8s/base/ingress.yaml
-                    """
-                    
-                    sh "kubectl rollout status deployment/spring-k8s-app"
-                }
-            }
-        }
-    }
-}
+           steps {
+               withKubeConfig([credentialsId: 'k8s-config']) {
+                   script {
+                       withEnv(['PATH+EXTRA=/usr/local/bin']) {    // Added this line
+                           sh """
+                               kubectl apply -f k8s/base/configmap.yaml
+                               kubectl apply -f k8s/base/deployment.yaml
+                               kubectl apply -f k8s/base/service.yaml
+                               kubectl apply -f k8s/base/ingress.yaml
+                           """
+                           
+                           sh "kubectl rollout status deployment/spring-k8s-app"
+                       }
+                   }
+               }
+           }
+       }
+   }
    
    post {
        always {
