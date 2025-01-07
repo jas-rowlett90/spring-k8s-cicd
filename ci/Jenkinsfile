@@ -39,23 +39,6 @@ pipeline {
            }
        }
        
- /* Commenting out the Push Docker Image stage because of local Docker Desktop usage for project.Only necessary in scenarios where the Kubernetes cluster requires access
-          to the Docker image via a registry.
-       stage('Push Docker Image') {
-           steps {
-               script {
-                   withEnv(['PATH+EXTRA=/usr/local/bin']) {
-                       sh """
-                           docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                           docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
-                           docker push ${DOCKER_IMAGE}:latest
-                       """
-                   }
-               }
-           }
-       }
-       */
-
        stage('Security Scan') {
            steps {
                timeout(time: 10, unit: 'MINUTES') {
@@ -82,31 +65,32 @@ pipeline {
        }
        
        stage('Deploy to K8s') {
-    steps {
-        withKubeConfig([credentialsId: 'k8s-config']) {
-            script {
-                withEnv(['PATH+EXTRA=/usr/local/bin']) {    
-                    sh """
-                        kubectl apply -f k8s/base/configmap.yaml
-                        kubectl apply -f k8s/base/deployment.yaml
-                        kubectl apply -f k8s/base/service.yaml
-                        kubectl apply -f k8s/base/ingress.yaml
-                    """
-                    
-                    sh "kubectl rollout status deployment/spring-k8s-app"
-                    
-                    // Changed port from 8080 to 8081
-                    sh """
-                        kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8081:80 &
-                        sleep 5
-                        curl http://localhost:8081/api/health
-                        pkill -f "kubectl port-forward"
-                    """
-                }
-            }
-        }
-    }
-}             
+           steps {
+               withKubeConfig([credentialsId: 'k8s-config']) {
+                   script {
+                       withEnv(['PATH+EXTRA=/usr/local/bin']) {    
+                           sh """
+                               kubectl apply -f k8s/base/configmap.yaml
+                               kubectl apply -f k8s/base/deployment.yaml
+                               kubectl apply -f k8s/base/service.yaml
+                               kubectl apply -f k8s/base/ingress.yaml
+                           """
+                           
+                           sh "kubectl rollout status deployment/spring-k8s-app"
+                           
+                           // Port forward and health check
+                           sh """
+                               kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8081:80 &
+                               sleep 5
+                               curl http://localhost:8081/api/health
+                               pkill -f "kubectl port-forward"
+                           """
+                       }
+                   }
+               }
+           }
+       }
+   }
    
    post {
        always {
