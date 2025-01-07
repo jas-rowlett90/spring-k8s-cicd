@@ -95,18 +95,18 @@ pipeline {
                     
                     sh "kubectl rollout status deployment/spring-k8s-app"
                     
-                    // Add port forwarding before health check
+                    // Changed port from 8080 to 8081
                     sh """
-                        kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80 &
+                        kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8081:80 &
                         sleep 5
-                        curl http://localhost:8080/api/health
+                        curl http://localhost:8081/api/health
                         pkill -f "kubectl port-forward"
                     """
                 }
             }
         }
     }
-}
+}             
    
    post {
        always {
