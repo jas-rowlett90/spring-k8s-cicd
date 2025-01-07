@@ -3,6 +3,11 @@
 This repository showcases a complete CI/CD pipeline designed for a Spring Boot application running on Kubernetes. The project incorporates Docker, Kubernetes, Jenkins, and SonarQube for efficient build, test, and deployment workflows.
 
 ---
+## CI/CD Pipeline Architecture
+
+The diagram below provides an overview of the CI/CD workflow and Kubernetes deployment process for this project:
+
+![CI/CD Pipeline Architecture](CI_CD_Kubernetes_Pipeline.png)
 
 ## Table of Contents
 
